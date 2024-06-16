@@ -6,6 +6,7 @@ description = "A cross-platform command line utility to watch file system change
 repository = "https://github.com/ahaoboy/chokidar"
 homepage = "https://github.com/ahaoboy/chokidar"
 authors = ["ahaoboy"]
+license = "MIT"
 
 [dependencies]
 wax = "0.6.0"
