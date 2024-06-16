@@ -1,0 +1,14 @@
+[package]
+name = "chokidar"
+version = "0.1.0"
+edition = "2021"
+description = "A cross-platform command line utility to watch file system changes."
+repository = "https://github.com/ahaoboy/chokidar"
+homepage = "https://github.com/ahaoboy/chokidar"
+authors = ["ahaoboy"]
+
+[dependencies]
+wax = "0.6.0"
+clap = { version = "4.5", features = ["derive"] }
+notify = "6.1.1"
+notify-debouncer-full = "0.3.1"
