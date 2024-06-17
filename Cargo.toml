@@ -1,6 +1,6 @@
 [package]
 name = "chokidar"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 description = "A cross-platform command line utility to watch file system changes."
 repository = "https://github.com/ahaoboy/chokidar"

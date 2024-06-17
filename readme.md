@@ -8,5 +8,5 @@ cargo binstall chokidar
 
 ## example
 ```bash
-chokidar 'src/**/*.{ts,tsx,json}' -c='pnpm run build' -d 1000 
+chokidar 'src/**/*.{ts,tsx,json}' -c='pnpm run build' -d 1000
 ```

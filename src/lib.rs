@@ -152,11 +152,14 @@ pub fn chokidar(args: Args) {
             .to_string(),
     );
     let glob = Glob::new(pattern).unwrap();
+
+    let mut file_count = 0;
     for entry in glob.walk(cwd.clone()).filter_map(|i| i.ok()) {
         let path = entry.path();
         watcher
             .watch(path, RecursiveMode::Recursive)
             .unwrap_or_else(|_| panic!("watch file error: {:?} ", path));
+        file_count += 1;
     }
 
     let shell = args.shell;
@@ -170,7 +173,8 @@ pub fn chokidar(args: Args) {
         Duration::from_millis(args.debounce.try_into().unwrap()),
     );
 
-    green(&format!("[watching: {}]", pattern));
+    green(&format!("[watching({file_count}): {pattern}]"));
+
     for result in rx {
         match result {
             Ok(_) => {
