@@ -1,8 +1,9 @@
 use clap::Parser;
 use clap::ValueEnum;
+use notify::Config;
+use notify::RecommendedWatcher;
 use notify::RecursiveMode;
 use notify::Watcher;
-use notify_debouncer_full::new_debouncer;
 use std::fmt::Display;
 use std::process::Command;
 use std::process::Stdio;
@@ -117,13 +118,8 @@ fn exec(shell: Shell, cmd: &str, cwd: String) {
 fn main() {
     let args = Args::parse();
     let (tx, rx) = std::sync::mpsc::channel();
-    let mut debouncer = new_debouncer(
-        Duration::from_millis(args.debounce.try_into().unwrap()),
-        None,
-        tx,
-    )
-    .expect("debouncer create error");
-    let watcher = debouncer.watcher();
+    let mut watcher = RecommendedWatcher::new(tx, Config::default()).unwrap();
+
     let pattern = &args.pattern;
     let cwd = args.cwd.unwrap_or(
         std::env::current_dir()
@@ -145,12 +141,16 @@ fn main() {
         green("[initial run]");
         exec(shell, &args.cmd, cwd.clone());
     }
+    let debounce_fn = fns::debounce(
+        move |_| exec(shell, &args.cmd, cwd.clone()),
+        Duration::from_millis(args.debounce.try_into().unwrap()),
+    );
+
     green(&format!("[watching: {}]", pattern));
     for result in rx {
         match result {
             Ok(_) => {
-                // events.iter().for_each(|event| println!("Event {event:?}"));
-                exec(shell, &args.cmd, cwd.clone());
+                debounce_fn.call(());
             }
             Err(error) => println!("Error {error:?}"),
         }
