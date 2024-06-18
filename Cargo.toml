@@ -13,6 +13,9 @@ wax = "0.6"
 clap = { version = "4.5", features = ["derive"] }
 notify = "6.1"
 fns = "0.0.7"
+dunce="*"
+colored = "2.1.0"
+clean-path = "0.2.1"
 
 # The profile that 'cargo dist' will build with
 [profile.dist]

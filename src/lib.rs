@@ -1,14 +1,20 @@
 use clap::Parser;
 use clap::ValueEnum;
+use clean_path::clean;
 use notify::Config;
 use notify::RecommendedWatcher;
 use notify::RecursiveMode;
 use notify::Watcher;
 use std::fmt::Display;
+use std::path::PathBuf;
 use std::process::Command;
 use std::process::Stdio;
 use std::time::Duration;
+use std::time::Instant;
 use wax::Glob;
+extern crate colored; // not needed in Rust 2018+
+
+use colored::*;
 
 #[derive(ValueEnum, Debug, Clone, Copy, Default)]
 pub enum Shell {
@@ -52,9 +58,22 @@ impl Display for Shell {
     }
 }
 
-fn green(s: &str) {
-    println!("\x1b[32m{}\x1b[0m", s);
+fn time_to_str(s: u64) -> String {
+    match s {
+        0 => "immediately".to_string(),
+        1..=59 => format!("in {s}s"),
+        _ => {
+            let m = s / 60;
+            let s = s % 60;
+
+            match s {
+                0 => format!("in {m}m"),
+                _ => format!("in {m}m {s}s"),
+            }
+        }
+    }
 }
+
 #[derive(Parser, Debug, Clone, Default)]
 #[command(version, about, long_about = None)]
 pub struct Args {
@@ -101,7 +120,8 @@ pub struct Args {
 }
 
 fn exec(shell: Shell, cmd: &str, cwd: String) {
-    green(&format!("[Running({}): {}]", shell, cmd));
+    let now = Instant::now();
+    println!("{}", (&format!("[Running({}): {}]", shell, cmd)).green());
 
     let op = match shell {
         Shell::Cmd => "/c",
@@ -117,7 +137,8 @@ fn exec(shell: Shell, cmd: &str, cwd: String) {
         .stderr(Stdio::inherit());
 
     c.output().expect("command exec error");
-    green("[Command was successful]");
+    let time = time_to_str(now.elapsed().as_secs());
+    println!("{}", format!("[Command was successful {time}]").green());
 }
 
 impl Args {
@@ -151,10 +172,14 @@ pub fn chokidar(args: Args) {
             .to_string_lossy()
             .to_string(),
     );
-    let glob = Glob::new(pattern).unwrap();
+    let (prefix, glob) = Glob::new(pattern).unwrap().partition();
+    let mut cwd_glob = PathBuf::from(cwd.clone());
+    let prefix = dunce::canonicalize(cwd_glob.clone().join(prefix)).unwrap();
+    let mut file_count: u32 = 0;
+    cwd_glob.push(prefix);
+    let cwd_glob = clean(cwd_glob);
 
-    let mut file_count = 0;
-    for entry in glob.walk(cwd.clone()).filter_map(|i| i.ok()) {
+    for entry in glob.walk(cwd_glob).filter_map(|i| i.ok()) {
         let path = entry.path();
         watcher
             .watch(path, RecursiveMode::Recursive)
@@ -165,7 +190,7 @@ pub fn chokidar(args: Args) {
     let shell = args.shell;
 
     if args.initial {
-        green("[initial run]");
+        println!("{}", ("[initial run]").green());
         exec(shell, &args.cmd, cwd.clone());
     }
     let debounce_fn = fns::debounce(
@@ -173,7 +198,16 @@ pub fn chokidar(args: Args) {
         Duration::from_millis(args.debounce.try_into().unwrap()),
     );
 
-    green(&format!("[watching({file_count}): {pattern}]"));
+    let file_str = match file_count {
+        0..=999 => (&format!("{file_count}")).green(),
+        1000..=4999 => (&format!("{file_count}")).yellow(),
+        _ => (&format!("{file_count}")).red(),
+    };
+
+    println!(
+        "{}",
+        (&format!("[watching({file_str}): {pattern}]")).green()
+    );
 
     for result in rx {
         match result {
